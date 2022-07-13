@@ -98,7 +98,7 @@ def client_sender(buffer):
             print(response)
 
             #wait for more input
-            buffer = raw_input("")
+            buffer = input("")
             buffer += "\n"
 
             client.send(buffer)
@@ -137,3 +137,48 @@ def run_command(command):
 
     return result
 
+
+def client_handler(client_socket):
+    global upload
+    global execute
+    global command
+
+    if len(upload_destination):
+        file_buffer=""
+
+        while True:
+            data = client_socket.recv(1024)
+
+            if not data:
+                break
+
+            else:
+                file_buffer += data
+
+    try:#   write our file into target system
+        file_descriptor = open(upload_destination,"wb")
+        file_descriptor.write(file_buffer)
+        file_descriptor.close()
+
+        #   make sure file is written
+        client_socket.send("Successfully saved file to %s\r\n" %upload_destination)
+    except:
+        client_socket.send("Failed to save file to %s\r\n" %upload_destination)
+
+
+    if len(execute):
+        #   run the command
+        output = run_command(execute)
+
+        client_socket.send(output)
+
+    if command:
+        while True:
+            #   jump out of a shell
+            client_socket.send("<MSP:#>")
+            cmd_buffer=""
+            while "\n" not in cmd_buffer:
+                cmd_buffer += client_socket.recv(1024)
+                response = run_command(cmd_buffer)
+                #response the data
+                client_socket.send(response)
